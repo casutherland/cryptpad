@@ -20,6 +20,26 @@ set -euo pipefail
 #            --expression 's/^\s*access_log.*/access_log off;/' \
 #            /etc/nginx/nginx.conf
 
-# By default, this script does nothing.  You'll have to modify it as
-# appropriate for your application.
+export DEBIAN_FRONTEND=noninteractive
+
+# Add latest nodejs sources
+curl -sL https://deb.nodesource.com/setup_5.x | bash -
+apt-get update
+apt-get install -y nodejs git
+
+# Install bower
+npm install -g bower
+
+# Install mongodb 3.0
+apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
+echo "deb http://repo.mongodb.org/apt/debian wheezy/mongodb-org/3.0 main" | tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+apt-get update
+#apt-get install -y mongodb-org=3.0.12 mongodb-org-server=3.0.12 mongodb-org-shell=3.0.12 mongodb-org-mongos=3.0.12 mongodb-org-tools=3.0.12
+apt-get install -y mongodb-org
+
+# Create mongodb wiredTiger storage dbPath
+# TODO: Confirm this is the most correct location for this action. Or, does this belongs in a run-once shell script?
+mkdir -p /var/lib/mongodb.wiredTiger
+
 exit 0
+
