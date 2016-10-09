@@ -30,6 +30,12 @@ apt-get install -y nodejs git
 # Install bower
 npm install -g bower
 
+# Copy default config and make adjustments for sandstorm
+cp config.js.dist config.js2
+sed --in-place='' \
+       --expression 's/\.\/datastore\//\/var\/lib\/datastore\//' \
+       config.js
+
 # Removed as mongodb is optional, and deprecated for CryptPad
 # Install mongodb 3.0
 # apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
