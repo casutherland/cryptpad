@@ -35,15 +35,9 @@ cd /opt/app
 cp /opt/app/config.js.dist /opt/app/config.js
 sed --in-place='' \
        --expression 's/\.\/datastore\//\/var\/lib\/datastore\//' \
+       --expression '/httpPort\:/s/3000/8000/' \
+       --expression '/websocketPort\:/s/3000/8000/' \
        /opt/app/config.js
-
-# Removed as mongodb is optional, and deprecated for CryptPad
-# Install mongodb 3.0
-# apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
-# echo "deb http://repo.mongodb.org/apt/debian wheezy/mongodb-org/3.0 main" | tee /etc/apt/sources.list.d/mongodb-org-3.0.list
-# apt-get update
-# #apt-get install -y mongodb-org=3.0.12 mongodb-org-server=3.0.12 mongodb-org-shell=3.0.12 mongodb-org-mongos=3.0.12 mongodb-org-tools=3.0.12
-# apt-get install -y mongodb-org
 
 exit 0
 
