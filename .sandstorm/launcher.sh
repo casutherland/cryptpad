@@ -27,18 +27,8 @@ set -euo pipefail
 #   * Launching other daemons your app needs (e.g. mysqld, redis-server, etc.)
 
 # Create CryptPad storage path
-# TODO: test if this is even necessary, or does CryptPad prefer to use the default './datastore' (which would not preserved with the grain as it isn't beneath the only non-tmpfs /var).
 mkdir -p /var/lib/datastore
-
-# TODO: remove as mongodb is no longer used
-# Create mongodb wiredTiger storage dbPath
-# TODO: Confirm this is the most correct location for this action. Or, does this belongs in a run-once if [ -d ... ] test?
-# mkdir -p /var/lib/mongodb.wiredTiger
-
-# TODO: remove as mongodb is no longer used
-# Start mongodb
-# WIRED_TIGER_CONFIG="log=(prealloc=false,file_max=200KB)"
-# mongod -f /etc/mongod.wiredTiger.conf --fork --wiredTigerEngineConfigString $WIRED_TIGER_CONFIG
+mkdir -p /var/log/cryptpad
 
 # Start the server
 cd /opt/app
