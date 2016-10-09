@@ -38,6 +38,9 @@ sed --in-place='' \
        --expression '/httpPort\:/s/3000/8000/' \
        --expression '/websocketPort\:/s/3000/8000/' \
        /opt/app/config.js
+sed --in-place='' \
+       --expression '/USE_FILE_BACKUP_STORAGE/s/messages\.log/\/var\/log\/cryptpad\/messages\.log/' \
+       /opt/app/NetfluxWebsocketSrv.js
 
 exit 0
 
