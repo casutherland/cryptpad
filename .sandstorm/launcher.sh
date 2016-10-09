@@ -26,7 +26,16 @@ set -euo pipefail
 #     to think about such things.
 #   * Launching other daemons your app needs (e.g. mysqld, redis-server, etc.)
 
-# By default, this script does nothing.  You'll have to modify it as
-# appropriate for your application.
+# Create mongodb wiredTiger storage dbPath
+# TODO: Confirm this is the most correct location for this action. Or, does this belongs in a run-once if [ -d ... ] test?
+mkdir -p /var/lib/mongodb.wiredTiger
+
+# Start mongodb
+WIRED_TIGER_CONFIG="log=(prealloc=false,file_max=200KB)"
+mongod -f /etc/mongod.wiredTiger.conf --fork --wiredTigerEngineConfigString $WIRED_TIGER_CONFIG
+
+# Start the server
 cd /opt/app
+node /opt/app/server.js
+
 exit 0

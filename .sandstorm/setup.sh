@@ -37,9 +37,5 @@ apt-get update
 #apt-get install -y mongodb-org=3.0.12 mongodb-org-server=3.0.12 mongodb-org-shell=3.0.12 mongodb-org-mongos=3.0.12 mongodb-org-tools=3.0.12
 apt-get install -y mongodb-org
 
-# Create mongodb wiredTiger storage dbPath
-# TODO: Confirm this is the most correct location for this action. Or, does this belongs in a run-once shell script?
-mkdir -p /var/lib/mongodb.wiredTiger
-
 exit 0
 
