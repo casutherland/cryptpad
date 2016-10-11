@@ -5,7 +5,7 @@
 The files within this .sandstorm folder are the first steps in an experiment to package CryptPad as a Sandstorm application.
 
 
-# Pre-requisites
+# Prerequisites
 
 Install [vagrant-spk](https://docs.sandstorm.io/en/latest/vagrant-spk/installation/) and review the Sandstorm [Packaging tutorial](https://docs.sandstorm.io/en/latest/vagrant-spk/packaging-tutorial/) to become familiar with the Sandstorm package development tools.
 
@@ -25,5 +25,5 @@ vagrant-spk dev
 
 # Known Issues
 
-The CryptPad client application fails to connect to the grain's websocket port/service instance. Currently troubleshooting.
+The CryptPad client application currently fails to connect to the grain's websocket port/service. Currently troubleshooting.
 
