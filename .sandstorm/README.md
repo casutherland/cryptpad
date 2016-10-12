@@ -25,5 +25,5 @@ vagrant-spk dev
 
 # Known Issues
 
-The CryptPad client application currently fails to connect to the grain's websocket port/service. This is a known issue with the CryptPad beta on the master branch circa Sept / early-Oct 2016. The resolution is to test the soon branch ([sandstorm-soon](https://github.com/qcu/cryptpad/tree/sandstorm-soon/).
+The CryptPad client application currently fails to connect to the grain's websocket port/service. This is a known issue with the CryptPad beta on the master branch circa Sept / early-Oct 2016. The resolution is to test sandstorm with the soon branch ([sandstorm-soon](https://github.com/qcu/cryptpad/tree/sandstorm-soon/)).
 
