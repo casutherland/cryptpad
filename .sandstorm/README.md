@@ -1,6 +1,6 @@
 # About Sandstorm, and this experimental 'sandstorm' branch of CryptPad
 
-[Sandstorm](https://sandstorm.io/) is an innovative platform for hosting, and easily self-hosting, instances of documents and applications (grains) from within a container dedicated to the individual grain.
+[Sandstorm](https://sandstorm.io/) is an innovative platform for hosting, and easily self-hosting, instances of [documents and applications](https://apps.sandstorm.io/) (grains) from within a container dedicated to the individual grain.
 
 The files within this .sandstorm folder are the first steps in an experiment to package CryptPad as a Sandstorm application.
 
