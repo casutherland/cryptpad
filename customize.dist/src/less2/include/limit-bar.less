@@ -1,0 +1,74 @@
+@import (reference) "./colortheme-all.less";
+
+.limit-bar_main () {
+    --LessLoader_require: LessLoader_currentFile();
+}
+& {
+    .cp-limit-container {
+        @colortheme_green: #5cb85c;
+        display: inline-flex;
+        flex-flow: column-reverse;
+        width: 100%;
+        margin-top: 20px;
+        .cp-limit-bar {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+
+            max-width: 100%;
+            margin: 3px;
+            box-sizing: border-box;
+            border-top: 1px solid #999;
+            background: white;
+            position: relative;
+            text-align: center;
+            width: ~"calc(100% - 6px)";
+            height: 35px;
+            line-height: 25px;
+            overflow: hidden;
+            .cp-limit-usage {
+                height: 100%;
+                display: inline-block;
+                background: blue;
+                position: absolute;
+                left: 0;
+                top: 0;
+                z-index: 1; // .usage
+                &.cp-limit-usage-normal {
+                    background: @colortheme_green;
+                }
+                &.cp-limit-usage-warning {
+                    background: orange;
+                }
+                &.cp-limit-usage-above {
+                    background: red;
+                }
+            }
+            .cp-limit-usage-text {
+                position: relative;
+                color: grey;
+                text-shadow: 1px 0 2px white, 0 1px 2px white, -1px 0 2px white, 0 -1px 2px white;
+                z-index: 2; // .usageText
+                font-size: @colortheme_app-font-size;
+                font-weight: bold;
+            }
+        }
+        .cp-limit-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            justify-content: space-evenly;
+            a {
+                height: 25px;
+                display: inline-flex;
+                align-items: center;
+                min-width: 200px;
+                width: 50%;
+                padding-top: 0;
+                padding-bottom: 0;
+                justify-content: center;
+                flex: 1;
+            }
+        }
+    }
+}

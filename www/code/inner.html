@@ -1,69 +1,25 @@
 <!DOCTYPE html>
-<html style="height: 100%;">
+<html class="cp-app-noscroll cp-app-print">
 <head>
     <meta content="text/html; charset=utf-8" http-equiv="content-type"/>
-    <link rel="stylesheet" href="/bower_components/components-font-awesome/css/font-awesome.min.css">
-    <script src="/bower_components/jquery/dist/jquery.min.js"></script>
-    <script src="/bower_components/codemirror/lib/codemirror.js"></script>
-    <link rel="stylesheet" href="/bower_components/codemirror/lib/codemirror.css">
-    <link rel="stylesheet" href="/bower_components/codemirror/addon/dialog/dialog.css">
-    <link rel="stylesheet" href="/bower_components/codemirror/addon/fold/foldgutter.css" />
-    <script src="/bower_components/codemirror/mode/javascript/javascript.js"></script>
-    <script src="/bower_components/codemirror/addon/mode/loadmode.js"></script>
-    <script src="/bower_components/codemirror/mode/meta.js"></script>
-
-    <script src="/bower_components/codemirror/addon/mode/overlay.js"></script>
-    <script src="/bower_components/codemirror/addon/mode/multiplex.js"></script>
-    <script src="/bower_components/codemirror/addon/mode/simple.js"></script>
-
-    <script src="/bower_components/codemirror/addon/edit/closebrackets.js"></script>
-    <script src="/bower_components/codemirror/addon/edit/matchbrackets.js"></script>
-    <script src="/bower_components/codemirror/addon/edit/trailingspace.js"></script>
-    <script src="/bower_components/codemirror/addon/selection/active-line.js"></script>
-    <script src="/bower_components/codemirror/addon/search/search.js"></script>
-    <script src="/bower_components/codemirror/addon/search/match-highlighter.js"></script>
-    <script src="/bower_components/codemirror/addon/search/searchcursor.js"></script>
-    <script src="/bower_components/codemirror/addon/dialog/dialog.js"></script>
-    <script src="/bower_components/codemirror/addon/fold/foldcode.js"></script>
-    <script src="/bower_components/codemirror/addon/fold/foldgutter.js"></script>
-    <script src="/bower_components/codemirror/addon/fold/brace-fold.js"></script>
-    <script src="/bower_components/codemirror/addon/fold/xml-fold.js"></script>
-    <script src="/bower_components/codemirror/addon/fold/markdown-fold.js"></script>
-    <script src="/bower_components/codemirror/addon/fold/comment-fold.js"></script>
+    <script async data-bootload="/code/inner.js" data-main="/common/sframe-boot.js?ver=1.6" src="/bower_components/requirejs/require.js?ver=2.3.5"></script>
     <style>
-      html {
-        height: 100%;
-      }
-      body {
-        height: 100%;
-        margin: 0px;
-      }
-      .CodeMirror {
-        position: absolute;
-        top: 25px;
-        bottom: 0px;
-        left: 0px;
-        right: 0px;
-        height: auto;
-      }
-      #cme_toolbox {
-        font: 12px Arial,Helvetica,Tahoma,Verdana,sans-serif;
-        height: 25px;
-        background: -webkit-linear-gradient(#EEEEEE, #DADADA); /* For Safari 5.1 to 6.0 */
-        background: -o-linear-gradient(white, #DDDDDD); /* For Opera 11.1 to 12.0 */
-        background: -moz-linear-gradient(white, #DDDDDD); /* For Firefox 3.6 to 15 */
-        background: linear-gradient(white, #DDDDDD); /* Standard syntax */
-      }
-      .CodeMirror-focused .cm-matchhighlight {
-        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQI12NgYGBgkKzc8x9CMDAwAAAmhwSbidEoSQAAAABJRU5ErkJggg==);
-        background-position: bottom;
-        background-repeat: repeat-x;
-      }
+        .loading-hidden { display: none; }
+        #editor1 { display: none; }
+    .html2canvas-container { width: 3000px !important; height: 3000px !important; }
     </style>
 </head>
-<body>
-  <div id="cme_toolbox"></div>
-  <textarea id="editor1" name="editor1"></textarea>
+<body class="cp-app-code">
+  <div id="cme_toolbox" class="cp-toolbar-container"></div>
+  <div id="cp-app-code-editor">
+    <div id="cp-app-code-container">
+        <textarea id="editor1" name="editor1"></textarea>
+    </div>
+    <div id="cp-app-code-preview">
+        <div id="cp-app-code-preview-content"></div>
+        <div id="cp-app-code-print"></div>
+    </div>
+  </div>
 </body>
 </html>
 

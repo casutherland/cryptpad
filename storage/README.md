@@ -7,6 +7,8 @@ There are a few guidelines for creating a module:
 Dependencies for your storage engine **should not** be added to Cryptpad.
 Instead, write an adaptor, and place it in `cryptpad/storage/yourAdaptor.js`.
 
+Alternatively, storage adaptors can be published to npm, and required from your config (once installed).
+
 ## Your adaptor should conform to a simple API.
 
 It must export an object with a single property, `create`, which is a function.
@@ -44,14 +46,14 @@ While we migrate to our new Netflux API, only the leveldb adaptor will be suppor
 
 ## removeChannel(channelName, callback)
 
-This method is called (optionally, see config.js.dist for more info) some amount of time after the last client in a channel disconnects.
+This method is called (optionally, see config.example.js for more info) some amount of time after the last client in a channel disconnects.
 
 It should remove any history of that channel, and execute a callback which takes an error message as an argument.
 
 ## Documenting your adaptor
 
 Naturally, you should comment your code well before making a PR.
-Failing that, you should definitely add notes to `cryptpad/config.js.dist` such that people who wish to install your adaptor know how to do so.
+Failing that, you should definitely add notes to `cryptpad/config.example.js` such that people who wish to install your adaptor know how to do so.
 
 Notes on how to install the back end, as well as how to install the client for connecting to the back end (as is the case with many datastores), as well as how to configure cryptpad to use your adaptor.
 The current configuration file should serve as an example of what to add, and how to comment.

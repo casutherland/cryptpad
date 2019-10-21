@@ -1,18 +1,259 @@
 define([
-    '/common/treesome.js',
+    '/common/cursor-treesome.js',
     '/bower_components/rangy/rangy-core.min.js'
-], function (Tree, Rangy, saveRestore) {
-    //window.Rangy = Rangy;
-    //window.Tree = Tree;
-    // do some function for the start and end of the cursor
-
-    var log = function (x) { console.log(x); };
-    var error = function (x) { console.log(x); };
+], function (Tree, Rangy) {
     var verbose = function (x) { if (window.verboseMode) { console.log(x); } };
 
     /* accepts the document used by the editor */
-    return function (inner) {
+    var Cursor = function (inner) {
         var cursor = {};
+
+        var getTextNodeValue = function (el) {
+            if (!el.data) { return; }
+            // We want to transform html entities into their code (non-breaking spaces into $&nbsp;)
+            var div = document.createElement('div');
+            div.innerText = el.data;
+            return div.innerHTML;
+        };
+
+        // Store the cursor position as an offset from the beginning of the text HTML content
+        var offsetRange = cursor.offsetRange = {
+            start: 0,
+            end: 0
+        };
+
+        // Get the length of the opening tag of an node (<body class="cp"> ==> 17)
+        var getOpeningTagLength = function (node) {
+            if (node.nodeType === node.TEXT_NODE) { return 0; }
+            var html = node.outerHTML;
+            var tagRegex = /^(<\s*[a-zA-Z-]*[^>]*>)(.+)/;
+            var match = tagRegex.exec(html);
+            var res = match && match.length > 1 ? match[1].length : 0;
+            return res;
+        };
+
+        // Get the offset recursively. We start with <body> and continue following the
+        // path to the range
+        var offsetInNode = function (element, offset, path, range) {
+            if (path.length === 0) {
+                offset += getOpeningTagLength(range.el);
+                if (range.el.nodeType === range.el.TEXT_NODE) {
+                    var div = document.createElement('div');
+                    div.innerText = range.el.data.slice(0, range.offset);
+                    return offset + div.innerHTML.length;
+                }
+                return offset + range.offset;
+            }
+            offset += getOpeningTagLength(element);
+            for (var i = 0; i < element.childNodes.length; i++) {
+                if (element.childNodes[i] === path[0]) {
+                    return offsetInNode(path.shift(), offset, path, range);
+                }
+                // It is not yet our path, add the length of the text node or tag's outerHTML
+                offset += (getTextNodeValue(element.childNodes[i]) || element.childNodes[i].outerHTML).length;
+            }
+        };
+
+        // Get the cursor position as a range and transform it into
+        // an offset from the beginning of the outer HTML
+        var getOffsetFromRange = function (element) {
+            var doc = element.ownerDocument || element.document;
+            var win = doc.defaultView || doc.parentWindow;
+            var o = {
+                start: 0,
+                end: 0
+            };
+            if (typeof win.getSelection !== "undefined") {
+                var sel = win.getSelection();
+                if (sel.rangeCount > 0) {
+                    var range = win.getSelection().getRangeAt(0);
+                    // Do it for both start and end
+                    ['start', 'end'].forEach(function (t) {
+                        var inNode = {
+                            el: range[t + 'Container'],
+                            offset: range[t + 'Offset']
+                        };
+                        while (inNode.el.nodeType !== Node.TEXT_NODE && inNode.el.childNodes.length > inNode.offset) {
+                            inNode.el = inNode.el.childNodes[inNode.offset];
+                            inNode.offset = 0;
+                        }
+                        var current = inNode.el;
+                        var path = [];
+                        while (current !== element) {
+                            path.unshift(current);
+                            current = current.parentNode;
+                        }
+
+                        if (current === element) { // Should always be the case
+                            o[t] = offsetInNode(current, 0, path, inNode);
+                        } else {
+                            console.error('???');
+                        }
+                    });
+                }
+            }
+            return o;
+        };
+
+        // Update the value of the offset
+        // This should be called before applying changes to the document
+        cursor.offsetUpdate = function () {
+            try {
+                var range = getOffsetFromRange(inner);
+                offsetRange.start = range.start;
+                offsetRange.end = range.end;
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        // Transform the offset value using the operations from the diff
+        // between the old and the new states of the document.
+        var offsetTransformRange = function (offset, ops) {
+            var transformCursor = function (cursor, op) {
+                if (!op) { return cursor; }
+
+                var pos = op.offset;
+                var remove = op.toRemove;
+                var insert = op.toInsert.length;
+                if (typeof cursor === 'undefined') { return; }
+                if (typeof remove === 'number' && pos < cursor) {
+                    cursor -= Math.min(remove, cursor - pos);
+                }
+                if (typeof insert === 'number' && pos < cursor) {
+                    cursor += insert;
+                }
+                return cursor;
+            };
+            var c = offset;
+            if (Array.isArray(ops)) {
+                for (var i = ops.length - 1; i >= 0; i--) {
+                    c = transformCursor(c, ops[i]);
+                }
+                offset = c;
+            }
+            return offset;
+        };
+
+        // Get the range starting from <body> and the offset value.
+        // We substract length of HTML content to the offset until we reach a text node or 0.
+        // If we reach a text node, it means we're in the final possible child and the
+        // current valu of the offset is the range one.
+        // If we reach 0 or a negative value, it means the range in is the current tag
+        // and we should use offset 0.
+        var getFinalRange = function (el, offset) {
+            if (el.nodeType === el.TEXT_NODE) {
+                // This should be the final text node
+                var txt = document.createElement("textarea");
+                txt.appendChild(el.cloneNode());
+                txt.innerHTML = txt.innerHTML.slice(0, offset);
+                return {
+                    el: el,
+                    offset: txt.value.length
+                };
+            }
+            if (el.tagName === 'BR') {
+                // If the range is in a <br>, we have a brFix that will make it better later
+                return {
+                    el: el,
+                    offset: 0
+                };
+            }
+
+            // Remove the current tag opening length
+            offset = offset - getOpeningTagLength(el);
+
+            if (offset <= 0) {
+                // Return the current node...
+                return {
+                    el: el,
+                    offset: 0
+                };
+            }
+
+            // For each child, if they length is greater than the current offset, they are
+            // containing the range element we're looking for.
+            // Otherwise, our range element is in a later sibling and we can just substract
+            // their length.
+            var newOffset = offset;
+            for (var i = 0; i < el.childNodes.length; i++) {
+                try {
+                newOffset -= (getTextNodeValue(el.childNodes[i]) || el.childNodes[i].outerHTML).length;
+                } catch (e) {
+                    console.log(el);
+                    console.log(el.childNodes[i]);
+                }
+                if (newOffset <= 0) {
+                    return getFinalRange(el.childNodes[i], offset);
+                }
+                offset = newOffset;
+            }
+
+            // New offset ends up in the closing tag
+            // ==> return the last child...
+            if (el.childNodes.length) {
+                return getFinalRange(el.childNodes[el.childNodes.length - 1], offset);
+            } else {
+                return {
+                    el: el,
+                    offset: 0
+                };
+            }
+        };
+
+        // Transform an offset into a range that we can use to restore the cursor
+        var getRangeFromOffset = function (element) {
+            var range = {
+                start: {
+                    el: null,
+                    offset: 0
+                },
+                end: {
+                    el: null,
+                    offset: 0
+                }
+            };
+
+            ['start', 'end'].forEach(function (t) {
+                var offset = offsetRange[t];
+                var res = getFinalRange(element, offset);
+                range[t].el = res.el;
+                range[t].offset = res.offset;
+            });
+
+
+            return range;
+        };
+
+        cursor.getNewOffset = function (ops) {
+            return {
+                selectionStart: offsetTransformRange(offsetRange.start, ops),
+                selectionEnd: offsetTransformRange(offsetRange.end, ops)
+            };
+        };
+        cursor.getNewRange = function (data, ops) {
+            offsetRange.start = offsetTransformRange(data.start, ops);
+            offsetRange.end = offsetTransformRange(data.end, ops);
+            var range = getRangeFromOffset(inner);
+            return range;
+        };
+
+        // Restore the cursor position after applying the changes.
+        cursor.restoreOffset = function (ops) {
+            try {
+                offsetRange.start = offsetTransformRange(offsetRange.start, ops);
+                offsetRange.end = offsetTransformRange(offsetRange.end, ops);
+                var range = getRangeFromOffset(inner);
+                var sel = cursor.makeSelection();
+                var r = cursor.makeRange();
+                cursor.fixStart(range.start.el, range.start.offset);
+                cursor.fixEnd(range.end.el, range.end.offset);
+                cursor.fixSelection(sel, r);
+                cursor.brFix();
+            } catch (e) {
+                console.error(e);
+            }
+        };
 
         // there ought to only be one cursor at a time, so let's just
         // keep it internally
@@ -25,108 +266,6 @@ define([
                 el: null,
                 offset:0
             }
-        };
-
-        // TODO deprecate
-        // assumes a negative index
-        var seekLeft /* = cursor.seekLeft*/ = function (el, delta, current) {
-            var textLength;
-            var previous;
-
-            // normalize
-
-            if (-delta >= current) {
-                delta += current;
-                current = 0;
-            } else {
-                current += delta;
-                delta = 0;
-            }
-
-            while (delta) {
-                previous = el;
-                el = Tree.previousNode(el, inner);
-                if (el) {
-                    textLength = el.textContent.length;
-                    if (-delta > textLength) {
-                        delta -= textLength;
-                    } else {
-                        current = textLength + delta;
-                        delta = 0;
-                    }
-                } else {
-                    return {
-                        el: previous,
-                        offset: 0,
-                        error: "out of bounds"
-                    };
-                }
-            }
-            return {
-                el: el,
-                offset: current
-            };
-        };
-
-        // TODO deprecate
-        // seekRight assumes a positive delta
-        var seekRight = /* cursor.seekRight = */ function (el, delta, current) {
-            var textLength;
-            var previous;
-
-            // normalize
-            delta += current;
-            current = 0;
-
-            while (delta) {
-                if (el) {
-                    textLength = el.textContent.length;
-                    if (delta >= textLength) {
-                        delta -= textLength;
-                        previous = el;
-                        el = Tree.nextNode(el, inner);
-                    } else {
-                        current = delta;
-                        delta = 0;
-                    }
-                } else {
-                    // don't ever return a negative index
-                    if (previous.textContent.length) {
-                        textLength = previous.textContent.length - 1;
-                    } else {
-                        textLength = 0;
-                    }
-                    return {
-                        el: previous,
-                        offset: textLength,
-                        error: "out of bounds"
-                    };
-                }
-            }
-            return {
-                el: el,
-                offset: current
-            };
-        };
-
-        // TODO deprecate
-        var seekToDelta = /* cursor.seekToDelta = */ function (el, delta, current) {
-            var result = null;
-            if (el) {
-                if (delta < 0)  {
-                    return seekLeft(el, delta, current);
-                } else if (delta > 0) {
-                    return seekRight(el, delta, current);
-                } else {
-                    result = {
-                        el: el,
-                        offset: current
-                    };
-                }
-            } else {
-                error("[cursor.seekToDelta] el is undefined");
-            }
-            return result;
         };
 
         /*  cursor.update takes notes about wherever the cursor was last seen
@@ -151,7 +290,7 @@ define([
             });
         };
 
-        var exists = cursor.exists = function () {
+        cursor.exists = function () {
             return (Range.start.el?1:0) | (Range.end.el?2:0);
         };
 
@@ -161,7 +300,7 @@ define([
             2 if end
             3 if start and end
         */
-        var inNode = cursor.inNode = function (el) {
+        cursor.inNode = function (el) {
             var state = ['start', 'end'].map(function (pos, i) {
                 return Tree.contains(el, Range[pos].el)? i +1: 0;
             });
@@ -194,6 +333,7 @@ define([
         };
 
         var fixSelection = cursor.fixSelection = function (sel, range) {
+            try {
             if (Tree.contains(Range.start.el, inner) && Tree.contains(Range.end.el, inner)) {
                 var order = Tree.orderOfNodes(Range.start.el, Range.end.el, inner);
                 var backward;
@@ -223,13 +363,15 @@ define([
             } else {
                 var errText = "[cursor.fixSelection] At least one of the " +
                     "cursor nodes did not exist, could not fix selection";
-                console.error(errText);
+                //console.error(errText);
                 return errText;
             }
+            } catch (e) { console.error(e); }
         };
 
-        var pushDelta = cursor.pushDelta = function (oldVal, newVal, offset) {
+        cursor.pushDelta = function (oldVal, newVal) {
             if (oldVal === newVal) { return; }
+
             var commonStart = 0;
             while (oldVal.charAt(commonStart) === newVal.charAt(commonStart)) {
                 commonStart++;
@@ -262,107 +404,29 @@ define([
             };
         };
 
-        /* getLength assumes that both nodes exist inside of the active editor.  */
-        // unused currently
-        var getLength = cursor.getLength = function () {
-            if (Range.start.el === Range.end.el) {
-                if (Range.start.offset === Range.end.offset) { return 0; }
-                if (Range.start.offset < Range.end.offset) {
-                    return Range.end.offset - Range.start.offset;
-                } else {
-                    return Range.start.offset - Range.end.offset;
+        cursor.transformRange = function (cursorRange, ops) {
+            var transformCursor = function (cursor, op) {
+                if (!op) { return cursor; }
+
+                var pos = op.offset;
+                var remove = op.toRemove;
+                var insert = op.toInsert.length;
+                if (typeof cursor === 'undefined') { return; }
+                if (typeof remove === 'number' && pos < cursor) {
+                    cursor -= Math.min(remove, cursor - pos);
                 }
-            } else {
-                var order = Tree.orderOfNodes(Range.start.el, Range.end.el, inner);
-                var L;
-                var cur;
-
-                /*  we know that the cursor elements are different, and that we
-                    must traverse to find the total length. We also know the
-                    order of the nodes (probably 1 or -1) */
-                if (order === 1) {
-                    L = (Range.start.el.textContent.length - Range.start.offset);
-                    cur = Tree.nextNode(Range.start.el, inner);
-                    while (cur && cur !== Range.end.el) {
-                        L += cur.textContent.length;
-                        cur = Tree.nextNode(cur, inner);
-                    }
-                    L += Range.end.offset;
-                    return L;
-                } else if (order === -1) {
-                    L = (Range.end.el.textContent - Range.end.offset);
-                    cur = Tree.nextNode(Range.end.el, inner);
-                    while (cur && cur !== Range.start.el) {
-                        L += cur.textContent.length;
-                        cur = Tree.nextNode(cur, inner);
-                    }
-                    L += Range.start.offset;
-                    return -L;
-                } else {
-                    console.error("unexpected ordering of nodes...");
-                    return null;
+                if (typeof insert === 'number' && pos < cursor) {
+                    cursor += insert;
                 }
-            }
-        };
-
-        // previously used for testing
-        // TODO deprecate
-        var delta = /* cursor.delta = */ function (delta1, delta2) {
-            var sel = Rangy.getSelection(inner);
-            delta2 = (typeof delta2 !== 'undefined') ? delta2 : delta1;
-
-            // update returns errors if there are problems
-            // and updates the persistent Range object
-            var err = cursor.update(sel, inner);
-            if (err) { return err; }
-
-            // create a range to modify
-            var range = Rangy.createRange();
-
-            /*
-                The assumption below is that Range.(start|end).el
-                actually exists. This might not be the case.
-                TODO check if start and end elements are defined
-            */
-
-            // using infromation about wherever you were last...
-            // move both parts by some delta
-            var start = seekToDelta(Range.start.el, delta1, Range.start.offset);
-            var end = seekToDelta(Range.end.el, delta2, Range.end.offset);
-
-            /*  if range is backwards, cursor.delta fails
-                so check if they're in the expected order
-                before setting the new range */
-
-            var order = Tree.orderOfNodes(start.el, end.el, inner);
-            var backward;
-
-            // this could all be one line but nobody would be able to read it
-            if (order === -1) {
-                // definitely backward
-                backward = true;
-            } else if (order === 0) {
-                // might be backward, check offsets to know for sure
-                backward = (start.offset > end.offset);
-            } else {
-                // definitely not backward
-                backward = false;
-            }
-
-            if (backward) {
-                range.setStart(end.el, end.offset);
-                range.setEnd(start.el, start.offset);
-            } else {
-                range.setStart(start.el, start.offset);
-                range.setEnd(end.el, end.offset);
-            }
-
-            // actually set the cursor to the new range
-            sel.setSingleRange(range);
-            return {
-                startError: start.error,
-                endError: end.error
+                return cursor;
             };
+            var c = cursorRange.offset;
+            if (Array.isArray(ops)) {
+                for (var i = ops.length - 1; i >= 0; i--) {
+                    c = transformCursor(c, ops[i]);
+                }
+                cursorRange.offset = c;
+            }
         };
 
         cursor.brFix = function () {
@@ -387,6 +451,58 @@ define([
             }
         };
 
+        cursor.lastTextNode = function () {
+            var lastEl = Tree.rightmostNode(inner);
+            if (lastEl && lastEl.nodeType === 3) { return lastEl; }
+
+            var firstEl = Tree.leftmostNode(inner);
+
+            while (lastEl !== firstEl) {
+                lastEl = Tree.previousNode(lastEl, inner);
+                if (lastEl && lastEl.nodeType === 3) { return lastEl; }
+            }
+
+            return lastEl;
+        };
+
+        cursor.firstTextNode = function () {
+            var firstEl = Tree.leftmostNode(inner);
+            if (firstEl && firstEl.nodeType === 3) { return firstEl; }
+
+            var lastEl = Tree.rightmostNode(inner);
+
+            while (firstEl !== lastEl) {
+                firstEl = Tree.nextNode(firstEl, inner);
+                if (firstEl && firstEl.nodeType === 3) { return firstEl; }
+            }
+            return firstEl;
+        };
+
+        cursor.setToStart = function () {
+            var el = cursor.firstTextNode();
+            if (!el) { return; }
+            fixStart(el, 0);
+            fixEnd(el, 0);
+            fixSelection(makeSelection(), makeRange());
+            return el;
+        };
+
+        cursor.setToEnd = function () {
+            var el = cursor.lastTextNode();
+            if (!el) { return; }
+
+            var offset = el.textContent.length;
+
+            fixStart(el, offset);
+            fixEnd(el, offset);
+            fixSelection(makeSelection(), makeRange());
+            return el;
+        };
+
         return cursor;
     };
+
+    Cursor.Tree = Tree;
+
+    return Cursor;
 });

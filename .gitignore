@@ -1,4 +1,5 @@
 datastore
+tasks
 www/bower_components/*
 node_modules
 /config.js
@@ -8,3 +9,15 @@ customization
 /customize/
 messages.log
 .DS_Store
+www/scratch
+data
+npm-debug.log
+pins/
+blob/
+block/
+blobstage/
+block/
+logs/
+privileged.conf
+config/config.js
+
